@@ -1,0 +1,49 @@
+name: Deploy Portfolio Steph
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy Portfolio Steph to Raspberry Pi
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Install sshpass
+        run: sudo apt-get install -y sshpass
+
+      - name: Deploy to Raspberry Pi
+        env:
+          RASPBERRY_PI_PASSWORD: ${{ secrets.RASPBERRY_PI_PASSWORD }}
+          RASPBERRY_PI_IP: ${{ secrets.RASPBERRY_PI_IP }}
+        run: |
+          sshpass -p $RASPBERRY_PI_PASSWORD ssh -o StrictHostKeyChecking=no pi@$RASPBERRY_PI_IP << 'EOF'
+            # Remove the old directory if it exists
+            if [ -d "/var/www/html/portfolio_steph" ]; then
+              echo "Removing old directory..."
+              rm -rf /var/www/html/portfolio_steph
+            fi
+
+            # Create the directory if it doesn't exist
+            echo "Creating new directory..."
+            mkdir -p /var/www/html/portfolio_steph
+
+            # Exit from SSH to copy files
+            exit
+          EOF
+
+      - name: Copy Built Files to Raspberry Pi
+        env:
+          RASPBERRY_PI_PASSWORD: ${{ secrets.RASPBERRY_PI_PASSWORD }}
+          RASPBERRY_PI_IP: ${{ secrets.RASPBERRY_PI_IP }}
+        run: |
+          sshpass -p $RASPBERRY_PI_PASSWORD scp -o StrictHostKeyChecking=no -r * pi@$RASPBERRY_PI_IP:/var/www/html/portfolio_steph
+
+      - name: Cleanup
+        run: rm -rf ~/.ssh
